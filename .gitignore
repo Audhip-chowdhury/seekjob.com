@@ -1,0 +1,10 @@
+node_modules/
+dist/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/seekjob.db
+backend/uploads/
+.env
+*.log
