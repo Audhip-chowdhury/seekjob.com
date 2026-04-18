@@ -1,11 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, mediaUrl } from "../api";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import StatusBadge from "../components/StatusBadge";
+import { useVisiblePolling } from "../hooks/useVisiblePolling";
 
 const STATUSES = ["Applied", "Interview", "Accepted", "Rejected"];
+
+function statusSelectOptions(current) {
+  if (current && !STATUSES.includes(current)) {
+    return [...STATUSES, current];
+  }
+  return STATUSES;
+}
 
 export default function CompanyApplications() {
   const [apps, setApps] = useState([]);
@@ -13,16 +21,21 @@ export default function CompanyApplications() {
   const [updating, setUpdating] = useState(null);
   const { role } = useAuth();
 
-  function load() {
+  const load = useCallback(() => {
     return api.get("/company/applications").then((res) => setApps(res.data));
-  }
+  }, []);
 
   useEffect(() => {
     if (role !== "company") return;
     load()
       .catch(() => setApps([]))
       .finally(() => setLoading(false));
-  }, [role]);
+  }, [role, load]);
+
+  useVisiblePolling(() => {
+    if (role !== "company") return;
+    load().catch(() => {});
+  }, 4000);
 
   async function setStatus(id, status) {
     setUpdating(id);
@@ -90,7 +103,7 @@ export default function CompanyApplications() {
                           disabled={updating === a.id}
                           onChange={(e) => setStatus(a.id, e.target.value)}
                         >
-                          {STATUSES.map((s) => (
+                          {statusSelectOptions(a.status).map((s) => (
                             <option key={s} value={s}>
                               {s}
                             </option>

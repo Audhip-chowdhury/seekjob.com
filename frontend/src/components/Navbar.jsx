@@ -67,13 +67,16 @@ export default function Navbar() {
               <Link to="/applicant/applications" className="hover:text-accent">
                 My applications
               </Link>
+              <Link to="/applicant/offers" className="hover:text-accent">
+                Offer letters
+              </Link>
               {user && <ProfileChip user={user} role="applicant" />}
             </>
           )}
           {role === "company" && (
             <>
               <Link to="/company/create-job" className="hover:text-accent">
-                Create job
+                Create postings
               </Link>
               <Link to="/company/applications" className="hover:text-accent">
                 Applicants

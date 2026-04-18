@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -5,10 +6,103 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_applicant, get_current_company
 from database import get_db
-from models import Application, Applicant, ApplicationStatus, Company, JobPosting
-from schemas import ApplicationOut, ApplicationStatusUpdate
+from models import Application, Applicant, Company, JobPosting
+from recruitment_matching import resolve_application_strict
+from schemas import ApplicationOut, ApplicationStatusUpdate, RecruitmentStatusCallback
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# Canonical path for HworkR ``RECRUITMENT_STATUS_WEBHOOK_URL`` (e.g. http://127.0.0.1:8020/recruitment/application-status).
+RECRUITMENT_STATUS_WEBHOOK_PATH = "/recruitment/application-status"
+
+
+def _run_recruitment_status_webhook(
+    body: RecruitmentStatusCallback,
+    db: Session,
+) -> ApplicationOut:
+    """
+    Inbound pipeline webhook: set ``Application.status`` from the external ``status`` string.
+
+    Configure HworkR with ``RECRUITMENT_STATUS_WEBHOOK_URL`` pointing at
+    ``POST {SeekJob base}{RECRUITMENT_STATUS_WEBHOOK_PATH}`` (default ``http://127.0.0.1:8020/recruitment/application-status``).
+    """
+    logger.info(
+        "POST %s request body: %s",
+        RECRUITMENT_STATUS_WEBHOOK_PATH,
+        body.model_dump(mode="json"),
+    )
+
+    external_id = body.recruitment_external_applicant_id
+    app = resolve_application_strict(
+        db,
+        external_id,
+        body.job_posting_code,
+        log_prefix=RECRUITMENT_STATUS_WEBHOOK_PATH,
+    )
+
+    logger.info(
+        "%s: applicant_id=%s application_id=%s recruitment_external_applicant_id=%r job_posting_code=%r",
+        RECRUITMENT_STATUS_WEBHOOK_PATH,
+        app.applicant_id,
+        app.id,
+        external_id,
+        body.job_posting_code,
+    )
+    print(
+        f"[{RECRUITMENT_STATUS_WEBHOOK_PATH}] applicant_id:",
+        app.applicant_id,
+        "| application_id:",
+        app.id,
+        "| recruitment_external_applicant_id:",
+        repr(external_id),
+        "| job_posting_code:",
+        repr(body.job_posting_code),
+    )
+
+    app.status = body.status
+    app.updated_at = datetime.utcnow()
+    db.add(app)
+    db.commit()
+    db.refresh(app)
+    result = enrich_application(app, db, include_applicant_files=False)
+    logger.info(
+        "POST %s response body: %s",
+        RECRUITMENT_STATUS_WEBHOOK_PATH,
+        result.model_dump(mode="json"),
+    )
+    return result
+
+
+@router.post(
+    RECRUITMENT_STATUS_WEBHOOK_PATH,
+    response_model=ApplicationOut,
+    summary="Recruitment pipeline status webhook",
+    description=(
+        "Inbound JSON webhook from HworkR after pipeline updates. "
+        "Fields: ``recruitment_external_applicant_id`` (candidate UUID), ``status`` (pipeline string), "
+        "optional ``job_posting_code`` (matches posting ``job_code_requisition_id`` when multiple applications share the same external id)."
+    ),
+)
+def recruitment_status_webhook(
+    body: RecruitmentStatusCallback,
+    db: Session = Depends(get_db),
+):
+    return _run_recruitment_status_webhook(body, db)
+
+
+@router.post(
+    "/recruitment/application_status",
+    response_model=ApplicationOut,
+    summary="Recruitment pipeline status webhook (legacy path)",
+    description="Same as ``POST /recruitment/application-status``; kept for older clients.",
+    include_in_schema=True,
+)
+def recruitment_status_webhook_legacy_path(
+    body: RecruitmentStatusCallback,
+    db: Session = Depends(get_db),
+):
+    return _run_recruitment_status_webhook(body, db)
 
 
 def enrich_application(
@@ -33,6 +127,7 @@ def enrich_application(
         status=app.status,
         applied_at=app.applied_at,
         updated_at=app.updated_at,
+        recruitment_external_applicant_id=app.recruitment_external_applicant_id,
         job_role=job_role,
         company_name=company_name,
         applicant_name=applicant.name if applicant else None,

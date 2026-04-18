@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Children, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, mediaUrl } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -99,6 +99,40 @@ function JobDescription({ text }) {
   );
 }
 
+function DetailSection({ title, children }) {
+  const nodes = Children.toArray(children).filter(Boolean);
+  if (nodes.length === 0) return null;
+  return (
+    <section className="mt-8">
+      <h2 className="text-lg font-semibold text-primary">{title}</h2>
+      <div className="mt-3 space-y-3 text-gray-700">{nodes}</div>
+    </section>
+  );
+}
+
+function ParaBlock({ label, text }) {
+  if (!text || !String(text).trim()) return null;
+  return (
+    <div>
+      {label && <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>}
+      <p className="mt-1 whitespace-pre-wrap">{text}</p>
+    </div>
+  );
+}
+
+function formatJobDate(iso) {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { dateStyle: "long" });
+  } catch {
+    return iso;
+  }
+}
+
+function hasStructuredOverview(job) {
+  return !!(job.job_summary_purpose || job.key_responsibilities || job.team_context);
+}
+
 export default function JobDetail() {
   const { id } = useParams();
   const [job, setJob] = useState(null);
@@ -106,6 +140,8 @@ export default function JobDetail() {
   const [applyModal, setApplyModal] = useState(null);
   const [applyLoading, setApplyLoading] = useState(false);
   const [applyErr, setApplyErr] = useState("");
+  const [applySyncPassword, setApplySyncPassword] = useState("");
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
   const { role, user } = useAuth();
   const navigate = useNavigate();
 
@@ -115,6 +151,20 @@ export default function JobDetail() {
       .then((res) => setJob(res.data))
       .catch(() => setErr("Job not found"));
   }, [id]);
+
+  useEffect(() => {
+    if (role !== "applicant" || !id) {
+      setAlreadyApplied(false);
+      return;
+    }
+    api
+      .get("/applicant/applications")
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setAlreadyApplied(list.some((a) => String(a.job_id) === String(id)));
+      })
+      .catch(() => setAlreadyApplied(false));
+  }, [role, id]);
 
   const showModal = applyModal === "confirm" || applyModal === "success";
   useEffect(() => {
@@ -131,9 +181,17 @@ export default function JobDetail() {
 
   async function confirmApply() {
     setApplyErr("");
+    const pwd = applySyncPassword.trim();
+    if (pwd.length > 0 && pwd.length < 8) {
+      setApplyErr("Password for recruitment sync must be at least 8 characters.");
+      return;
+    }
     setApplyLoading(true);
     try {
-      await api.post(`/jobs/${id}/apply`);
+      const payload = pwd.length > 0 ? { password: pwd } : {};
+      await api.post(`/jobs/${id}/apply`, payload);
+      setApplySyncPassword("");
+      setAlreadyApplied(true);
       setApplyModal("success");
     } catch (ex) {
       setApplyErr(
@@ -151,6 +209,7 @@ export default function JobDetail() {
   function closeModal() {
     setApplyModal(null);
     setApplyErr("");
+    setApplySyncPassword("");
   }
 
   if (err || !job) {
@@ -187,7 +246,7 @@ export default function JobDetail() {
                 </h2>
                 <p className="mt-1 text-sm text-gray-600">
                   You are applying to <span className="font-semibold">{job.job_role}</span> at{" "}
-                  {job.company_name}.
+                  {job.posting_company_name || job.company_name}.
                 </p>
                 <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -217,6 +276,21 @@ export default function JobDetail() {
                     </div>
                   </div>
                 </div>
+                <label className="mt-4 block text-sm text-gray-700">
+                  <span className="font-medium">Account password (optional)</span>
+                  <span className="mb-1 block text-xs font-normal text-gray-500">
+                    Used only for the linked recruitment system sync — not stored by SeekJob. If provided,
+                    minimum 8 characters.
+                  </span>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={applySyncPassword}
+                    onChange={(e) => setApplySyncPassword(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Leave blank if not required"
+                  />
+                </label>
                 {applyErr && <p className="mt-3 text-sm text-red-600">{applyErr}</p>}
                 <div className="mt-6 flex flex-wrap gap-3">
                   <button
@@ -278,13 +352,28 @@ export default function JobDetail() {
         <div className="flex gap-4 border-b border-gray-200 pb-6">
           <HeaderLogo
             logoPath={job.company_logo}
-            companyName={job.company_name}
+            companyName={job.posting_company_name || job.company_name}
             className="h-20 w-20"
           />
           <div>
             <h1 className="text-2xl font-bold text-ink">{job.job_role}</h1>
-            <p className="text-lg text-primary">{job.company_name}</p>
+            <p className="text-lg text-primary">{job.posting_company_name || job.company_name}</p>
             <p className="text-gray-600">{job.location}</p>
+            {(job.work_mode || job.employment_type || job.job_level_grade || job.department_team) && (
+              <p className="mt-2 text-sm text-gray-600">
+                {[job.department_team, job.job_level_grade, job.employment_type, job.work_mode].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            {job.number_of_openings != null && job.number_of_openings > 0 && (
+              <p className="mt-1 text-sm text-gray-600">
+                Openings: <span className="font-medium">{job.number_of_openings}</span>
+                {job.job_code_requisition_id && (
+                  <span className="ml-2">
+                    · Req: <span className="font-mono text-sm">{job.job_code_requisition_id}</span>
+                  </span>
+                )}
+              </p>
+            )}
             <p className="mt-2 text-sm text-gray-500">
               Posted {new Date(job.created_at).toLocaleString()}
             </p>
@@ -293,16 +382,89 @@ export default function JobDetail() {
             </span>
           </div>
         </div>
-        <section className="mt-8">
-          <h2 className="sr-only">Job description</h2>
-          <JobDescription text={job.description} />
-        </section>
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold text-primary">Skills required</h2>
-          <p className="mt-2 text-gray-700">{job.skills_required}</p>
-        </section>
+
+        {hasStructuredOverview(job) && (
+          <DetailSection title="Role overview">
+            <ParaBlock label="Summary / purpose" text={job.job_summary_purpose} />
+            <ParaBlock label="Key responsibilities" text={job.key_responsibilities} />
+            <ParaBlock label="Team context" text={job.team_context} />
+          </DetailSection>
+        )}
+
+        {!hasStructuredOverview(job) && (
+          <section className="mt-8">
+            <h2 className="sr-only">Job description</h2>
+            <JobDescription text={job.description} />
+          </section>
+        )}
+
+        {(job.min_education ||
+          job.years_experience_required ||
+          job.required_skills_tools ||
+          job.preferred_skills_nice_to_have) && (
+          <DetailSection title="Qualifications">
+            <ParaBlock label="Minimum education" text={job.min_education} />
+            <ParaBlock label="Experience" text={job.years_experience_required} />
+            <ParaBlock label="Required skills / tools" text={job.required_skills_tools} />
+            <ParaBlock label="Nice to have" text={job.preferred_skills_nice_to_have} />
+          </DetailSection>
+        )}
+
+        {!job.required_skills_tools && !job.preferred_skills_nice_to_have && job.skills_required && (
+          <section className="mt-10">
+            <h2 className="text-lg font-semibold text-primary">Skills required</h2>
+            <p className="mt-2 text-gray-700">{job.skills_required}</p>
+          </section>
+        )}
+
+        {(job.salary_range_band || job.stock_esop_details || job.benefits_summary) && (
+          <DetailSection title="Compensation & benefits">
+            <ParaBlock label="Salary range / band" text={job.salary_range_band} />
+            <ParaBlock label="Stock / ESOP" text={job.stock_esop_details} />
+            <ParaBlock label="Benefits" text={job.benefits_summary} />
+          </DetailSection>
+        )}
+
+        {(job.application_deadline || job.expected_joining_date) && (
+          <DetailSection title="Hiring timeline">
+            {job.application_deadline && (
+              <p>
+                <span className="font-semibold text-ink">Application deadline:</span>{" "}
+                {formatJobDate(job.application_deadline)}
+              </p>
+            )}
+            {job.expected_joining_date && (
+              <p>
+                <span className="font-semibold text-ink">Expected joining:</span>{" "}
+                {formatJobDate(job.expected_joining_date)}
+              </p>
+            )}
+          </DetailSection>
+        )}
+
+        {(job.company_description_mission || job.culture_values) && (
+          <DetailSection title="Company & culture">
+            <ParaBlock label="Mission / description" text={job.company_description_mission} />
+            <ParaBlock label="Culture / values" text={job.culture_values} />
+          </DetailSection>
+        )}
+
+        {hasStructuredOverview(job) && job.description && job.description.trim() && job.description.trim() !== "—" && (
+          <section className="mt-8">
+            <h2 className="text-lg font-semibold text-primary">Additional description</h2>
+            <JobDescription text={job.description} />
+          </section>
+        )}
         <div className="mt-10 flex flex-wrap gap-4">
-          {role === "applicant" && (
+          {role === "applicant" && alreadyApplied && (
+            <p className="flex items-center rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm font-medium text-green-900">
+              You have already applied to this job.
+              <Link to="/applicant/applications" className="ml-3 font-semibold text-primary underline">
+                View your applications
+              </Link>
+            </p>
+          )}
+          {role === "applicant" && !alreadyApplied && (
             <button
               type="button"
               onClick={() => {

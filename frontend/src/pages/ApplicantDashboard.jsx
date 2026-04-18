@@ -1,23 +1,33 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import StatusBadge from "../components/StatusBadge";
+import { useVisiblePolling } from "../hooks/useVisiblePolling";
 
 export default function ApplicantDashboard() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const { role } = useAuth();
 
-  useEffect(() => {
-    if (role !== "applicant") return;
-    api
+  const load = useCallback(() => {
+    return api
       .get("/applicant/applications")
       .then((res) => setApps(res.data))
-      .catch(() => setApps([]))
-      .finally(() => setLoading(false));
-  }, [role]);
+      .catch(() => setApps([]));
+  }, []);
+
+  useEffect(() => {
+    if (role !== "applicant") return;
+    setLoading(true);
+    load().finally(() => setLoading(false));
+  }, [role, load]);
+
+  useVisiblePolling(() => {
+    if (role !== "applicant") return;
+    load();
+  }, 4000);
 
   if (role !== "applicant") {
     return (

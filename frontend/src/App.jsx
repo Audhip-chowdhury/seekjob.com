@@ -9,6 +9,8 @@ import CompanyRegister from "./pages/CompanyRegister";
 import Discussions from "./pages/Discussions";
 import DiscussionThread from "./pages/DiscussionThread";
 import ApplicantDashboard from "./pages/ApplicantDashboard";
+import ApplicantOffers from "./pages/ApplicantOffers";
+import ApplicantOfferDetail from "./pages/ApplicantOfferDetail";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import CompanyApplications from "./pages/CompanyApplications";
 
@@ -25,6 +27,8 @@ export default function App() {
       <Route path="/discussions" element={<Discussions />} />
       <Route path="/discussions/:id" element={<DiscussionThread />} />
       <Route path="/applicant/applications" element={<ApplicantDashboard />} />
+      <Route path="/applicant/offers" element={<ApplicantOffers />} />
+      <Route path="/applicant/offers/:offerId" element={<ApplicantOfferDetail />} />
       <Route path="/company/create-job" element={<CompanyDashboard />} />
       <Route path="/company/applications" element={<CompanyApplications />} />
       <Route path="*" element={<Navigate to="/" replace />} />

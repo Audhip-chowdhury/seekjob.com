@@ -16,7 +16,6 @@ from database import Base, SessionLocal, engine
 from models import (
     Applicant,
     Application,
-    ApplicationStatus,
     AuthorType,
     Company,
     Discussion,
@@ -144,7 +143,7 @@ def download_url(url: str, dest_path: str, min_bytes: int = 500) -> bool:
         return False
 
 
-LOGO_BG_COLORS = ["2563eb", "047857", "b45309", "b91c1c", "6d28d9", "be185d"]
+LOGO_BG_COLORS = ["2563eb", "047857", "b45309", "b91c1c", "6d28d9", "be185d", "0f766e"]
 
 
 def write_applicant_cv_pdf(path: str, name: str, email: str, headline: str, skills: str) -> None:
@@ -225,6 +224,11 @@ COMPANIES_DATA = [
         "location": "Nova Meridian — Creative Wharf",
         "email": "people@pulsemedia.nm",
     },
+    {
+        "name": "Aurora Energy Grid",
+        "location": "Nova Meridian — Power & Grid Hub",
+        "email": "careers@auroraenergygrid.nm",
+    },
 ]
 
 # One "About {company}" paragraph per company index (used inside jd_block)
@@ -247,6 +251,9 @@ COMPANY_ABOUT = [
     "Pulse Media Network produces streaming content, live events, and brand partnerships for regional and national audiences. "
     "Creativity meets operational rigor: we ship on schedule, protect IP, and iterate using audience data. "
     "Cross-functional pods include production, engineering, and growth.",
+    "Aurora Energy Grid operates transmission, distribution planning, and smart-meter programs for Nova Meridian. "
+    "Reliability and worker safety come first; we invest in SCADA modernization, outage analytics, and storm response. "
+    "Engineering and field teams collaborate under NERC-style discipline with transparent incident learning.",
 ]
 
 OFFER_EXTRAS = [
@@ -256,6 +263,7 @@ OFFER_EXTRAS = [
     "Clinical education stipend, mental health support, and flexible shift swap tools.",
     "Performance bonuses on client outcomes and sponsored MBA pathways for senior staff.",
     "Festival passes, creative sabbaticals, and equipment budgets for remote editors.",
+    "Grid safety certifications, hazard pay for field rotations, and union-negotiated overtime rules.",
 ]
 
 
@@ -621,12 +629,7 @@ def seed():
             seen.add(p)
             unique.append(p)
 
-    statuses = [
-        ApplicationStatus.APPLIED,
-        ApplicationStatus.INTERVIEW,
-        ApplicationStatus.ACCEPTED,
-        ApplicationStatus.REJECTED,
-    ]
+    statuses = ["Applied", "Interview", "Accepted", "Rejected"]
     weights = [0.35, 0.25, 0.15, 0.25]
     for i, (jid, aid) in enumerate(unique[:50]):
         st = random.choices(statuses, weights=weights, k=1)[0]
@@ -696,7 +699,7 @@ def seed():
     db.commit()
 
     db.close()
-    print("Seed complete: 6 companies, 50 jobs, 10 applicants, 50 applications, 50 discussion rows.")
+    print("Seed complete: 7 companies, 50 jobs, 10 applicants, 50 applications, 50 discussion rows.")
     print("Test login password for all seeded users: password123")
 
 
