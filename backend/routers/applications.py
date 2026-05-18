@@ -137,6 +137,27 @@ def enrich_application(
     )
 
 
+@router.get("/company/jobs/{job_id}/applications", response_model=list[ApplicationOut])
+def list_company_job_applications(
+    job_id: int,
+    company: Company = Depends(get_current_company),
+    db: Session = Depends(get_db),
+):
+    """List applicants for one job posting belonging to the authenticated company."""
+    job = db.query(JobPosting).filter(JobPosting.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.company_id != company.id:
+        raise HTTPException(status_code=403, detail="Not your job posting")
+    apps = (
+        db.query(Application)
+        .filter(Application.job_id == job_id)
+        .order_by(Application.applied_at.desc())
+        .all()
+    )
+    return [enrich_application(a, db, include_applicant_files=True) for a in apps]
+
+
 @router.get("/applicant/applications", response_model=list[ApplicationOut])
 def list_applicant_applications(
     applicant: Applicant = Depends(get_current_applicant),
