@@ -56,6 +56,9 @@ class ApplicantOut(BaseModel):
     email: str
     picture_path: Optional[str] = None
     cv_path: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    oauth_provider: Optional[str] = None
     created_at: datetime
 
     class Config:

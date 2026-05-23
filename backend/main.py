@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from database import (
     Base,
     engine,
+    migrate_sqlite_applicant_oauth_columns,
     migrate_sqlite_application_columns,
     migrate_sqlite_application_unique_job_applicant,
     migrate_sqlite_job_posting_columns,
@@ -24,6 +29,7 @@ migrate_sqlite_application_columns()
 migrate_sqlite_application_unique_job_applicant()
 migrate_sqlite_recruitment_inbound_offers()
 migrate_sqlite_recruitment_inbound_offer_response_columns()
+migrate_sqlite_applicant_oauth_columns()
 
 app = FastAPI(
     title="SeekJob API",

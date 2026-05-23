@@ -8,6 +8,8 @@ export default function ApplicantRegister() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
   const [picture, setPicture] = useState(null);
   const [cv, setCv] = useState(null);
   const [err, setErr] = useState("");
@@ -25,6 +27,8 @@ export default function ApplicantRegister() {
     fd.append("name", name);
     fd.append("email", email);
     fd.append("password", password);
+    fd.append("city", city);
+    fd.append("country", country);
     fd.append("picture", picture);
     fd.append("cv", cv);
     try {
@@ -76,6 +80,28 @@ export default function ApplicantRegister() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm font-medium">
+              City
+              <input
+                required
+                className="mt-1 w-full rounded border px-3 py-2"
+                placeholder="e.g. London"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              Country
+              <input
+                required
+                className="mt-1 w-full rounded border px-3 py-2"
+                placeholder="e.g. United Kingdom"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+              />
+            </label>
+          </div>
           <label className="block text-sm font-medium">
             Profile picture (JPG/JPEG, max 5MB)
             <input

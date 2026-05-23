@@ -148,6 +148,26 @@ def migrate_sqlite_application_unique_job_applicant() -> None:
         )
 
 
+def migrate_sqlite_applicant_oauth_columns() -> None:
+    """Add city, country, oauth_provider, oauth_id columns to applicants table."""
+    if not DATABASE_URL.startswith("sqlite"):
+        return
+    insp = inspect(engine)
+    if "applicants" not in insp.get_table_names():
+        return
+    existing = {c["name"] for c in insp.get_columns("applicants")}
+    alters = [
+        ("city", "VARCHAR(128)"),
+        ("country", "VARCHAR(128)"),
+        ("oauth_provider", "VARCHAR(64)"),
+        ("oauth_id", "VARCHAR(255)"),
+    ]
+    with engine.begin() as conn:
+        for col, ddl in alters:
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE applicants ADD COLUMN {col} {ddl}"))
+
+
 def get_db():
     db = SessionLocal()
     try:
