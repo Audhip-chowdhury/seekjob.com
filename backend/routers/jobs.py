@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_applicant, get_current_company
 from database import get_db
 from models import Application, Applicant, Company, JobPosting, JobType
-from recruitment_webhook import fire_public_apply_webhook
+from recruitment_webhook import fire_public_apply_webhook, schedule_hr_bot_auto_hire_on_apply
 from schemas import CompanyBrief, JobCreate, JobListOut, JobOut, RecruitmentApplyBody
 
 router = APIRouter()
@@ -289,6 +289,8 @@ def apply_job(
         db.add(app)
         db.commit()
         db.refresh(app)
+
+    schedule_hr_bot_auto_hire_on_apply(job_id, application_id=app.id)
 
     return {
         "ok": True,

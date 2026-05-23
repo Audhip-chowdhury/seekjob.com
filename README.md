@@ -20,6 +20,30 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - Health: `GET http://localhost:8000/health`
 - Static uploads: `http://localhost:8000/uploads/...`
 
+### hr-bot auto-hire on apply (optional)
+
+When an applicant successfully calls `POST /jobs/{job_id}/apply`, SeekJob can trigger hr-bot
+`POST /hr/screen-seekjob-posting-no-reject` in a background thread (best-effort; apply still succeeds if hr-bot fails).
+
+Set environment variables before starting uvicorn (or export in your shell):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `HUMAN_PRESENT` | No | `0` (default): auto-hire may run on apply. `1`: skip hr-bot auto-hire (human handles hiring). |
+| `HR_BOT_AUTO_HIRE_URL` | Yes (to enable) | Full URL, e.g. `http://127.0.0.1:8010/hr/screen-seekjob-posting-no-reject`. Empty = disabled. |
+| `HR_BOT_AUTO_HIRE_HTTP_TIMEOUT` | No | Seconds (default `120`). Screening can be slow. |
+| `HR_BOT_AUTO_HIRE_COMPANY_EMAIL` | No | Passed in JSON body for hr-bot SeekJob login |
+| `HR_BOT_AUTO_HIRE_COMPANY_PASSWORD` | No | Passed in JSON body for hr-bot SeekJob login |
+| `HR_BOT_AUTO_HIRE_BEARER_TOKEN` | No | Optional `Authorization: Bearer …` header |
+
+hr-bot must already have an `external_job_posting_links` row for the SeekJob job id (create via
+`POST /hr/platform/create-posting` with SeekJob sync). hr-bot uses `SEEKJOB_COMPANY_EMAIL` /
+`SEEKJOB_COMPANY_PASSWORD` when credentials are omitted from the trigger body.
+
+**Prerequisites for full hire + credentials:** hr-bot running, posting linked, HworkR public-apply
+working (`RECRUITMENT_PUBLIC_APPLY_BASE_URL`), and HworkR → hr-bot hired webhook configured per
+[hr-bot-service README](../JobEx/hr-bot-service/README.md).
+
 ### Seeded logins (after `seed.py`)
 
 - **Companies:** emails like `careers@meridiantech.nm` … (see `seed.py` `COMPANIES_DATA`)
