@@ -58,8 +58,12 @@ class Applicant(Base):
     name = Column(String(255), nullable=False)
     picture_path = Column(String(512), nullable=True)
     cv_path = Column(String(512), nullable=True)
+    city = Column(String(128), nullable=True)
+    country = Column(String(128), nullable=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
+    oauth_provider = Column(String(64), nullable=True)
+    oauth_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     applications = relationship("Application", back_populates="applicant")

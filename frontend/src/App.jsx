@@ -4,6 +4,7 @@ import JobList from "./pages/JobList";
 import JobDetail from "./pages/JobDetail";
 import ApplicantLogin from "./pages/ApplicantLogin";
 import ApplicantRegister from "./pages/ApplicantRegister";
+import OAuthCallback from "./pages/OAuthCallback";
 import CompanyLogin from "./pages/CompanyLogin";
 import CompanyRegister from "./pages/CompanyRegister";
 import Discussions from "./pages/Discussions";
@@ -22,6 +23,7 @@ export default function App() {
       <Route path="/jobs/:id" element={<JobDetail />} />
       <Route path="/login/applicant" element={<ApplicantLogin />} />
       <Route path="/register/applicant" element={<ApplicantRegister />} />
+      <Route path="/oauth-callback" element={<OAuthCallback />} />
       <Route path="/login/company" element={<CompanyLogin />} />
       <Route path="/register/company" element={<CompanyRegister />} />
       <Route path="/discussions" element={<Discussions />} />

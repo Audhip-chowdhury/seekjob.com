@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"E:\\\\projects X\\\\seekjob.com\" -Depth 0)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(python -c \"from routers.auth_applicant import router; routes = [r.path for r in router.routes]; print\\('\\\\n'.join\\(routes\\)\\)\")",
+      "Bash(python -c \"import main; print\\('main OK'\\)\")"
+    ]
+  }
+}
